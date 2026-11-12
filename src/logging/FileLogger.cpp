@@ -60,6 +60,7 @@ FileLogger::FileLogger(filesystem::path file)
 // Log file event
 void FileLogger::logEvent(const FileEvent& event)
 {
+    lock_guard<mutex> lock(mutex_);
     writeTimestamp(output_);
 
     output_ << toString(event.type)
@@ -76,6 +77,7 @@ void FileLogger::logRuleResult(
     const string& ruleName,
     bool success)
 {
+    lock_guard<mutex> lock(mutex_);
     writeTimestamp(output_);
 
     output_ << "RULE "
@@ -84,6 +86,14 @@ void FileLogger::logRuleResult(
             << (success ? "SUCCESS" : "FAILED")
             << "\n";
 
+    output_.flush();
+}
+
+void FileLogger::logMessage(const string& message)
+{
+    lock_guard<mutex> lock(mutex_);
+    writeTimestamp(output_);
+    output_ << message << "\n";
     output_.flush();
 }
 
