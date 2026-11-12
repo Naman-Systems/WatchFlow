@@ -186,6 +186,18 @@ Config loadPipeConfig(std::ifstream& input) {
             continue;
         }
 
+        if (parts[0] == "WORKERS") {
+            if (parts.size() != 2) throw std::runtime_error("Invalid WORKERS at line " + std::to_string(lineNumber));
+            config.workers = std::stoul(trim(parts[1]));
+            continue;
+        }
+
+        if (parts[0] == "QUEUE_CAPACITY") {
+            if (parts.size() != 2) throw std::runtime_error("Invalid QUEUE_CAPACITY at line " + std::to_string(lineNumber));
+            config.queueCapacity = std::stoul(trim(parts[1]));
+            continue;
+        }
+
         if (parts[0] == "WAIT_UNTIL_COMPLETE") {
             if (parts.size() != 4) throw std::runtime_error("Invalid WAIT_UNTIL_COMPLETE at line " + std::to_string(lineNumber));
             config.actionOptions.fileStability.enabled = lower(trim(parts[1])) == "true";
@@ -313,6 +325,10 @@ Config loadYamlConfig(std::ifstream& input) {
             config.logFile = value;
         } else if (key == "duplicates") {
             config.actionOptions.duplicateMode = parseDuplicateMode(value);
+        } else if (key == "workers") {
+            config.workers = std::stoul(value);
+        } else if (key == "queue_capacity") {
+            config.queueCapacity = std::stoul(value);
         } else {
             throw std::runtime_error("Unknown YAML key at line " + std::to_string(lineNumber));
         }

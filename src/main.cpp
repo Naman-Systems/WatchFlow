@@ -1,3 +1,7 @@
+#include "watchflow/async/Task.hpp"
+#include "watchflow/async/TaskExecutor.hpp"
+#include "watchflow/async/TaskQueue.hpp"
+#include "watchflow/async/ThreadPool.hpp"
 #include "watchflow/config/ConfigManager.hpp"
 #include "watchflow/logging/ConsoleLogger.hpp"
 #include "watchflow/logging/FileLogger.hpp"
@@ -7,11 +11,13 @@
 #include <csignal>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <unistd.h>
 
 using namespace std;
 using namespace watchflow;
+
 namespace {
     volatile sig_atomic_t keepRunning = 1;
 
@@ -58,14 +64,24 @@ int main(int argc, char* argv[]) {
             engine.addRule(move(rule));
         }
 
-        // 5. Handle Ctrl+C and termination
+        // 5. Initialize Asynchronous Task Processing Components
+        auto taskQueue = make_shared<TaskQueue>(config.queueCapacity);
+        auto taskExecutor = make_shared<TaskExecutor>(
+            &logger,
+            fileLogger ? &(*fileLogger) : nullptr
+        );
+        ThreadPool threadPool(taskQueue, taskExecutor, config.workers);
+
+        // 6. Handle Ctrl+C and termination
         signal(SIGINT, handleSignal);
         signal(SIGTERM, handleSignal);
 
-        // 6. Display startup information
-        cout << "WatchFlow started\n";
+        // 7. Display startup information
+        cout << "WatchFlow started (Asynchronous Engine)\n";
         cout << "Watching: " << config.watchDirectory << "\n";
         cout << "Rules: " << config.rules.size() << "\n";
+        cout << "Worker Threads: " << threadPool.workerCount() << "\n";
+        cout << "Queue Capacity: " << config.queueCapacity << "\n";
 
         if (!config.logFile.empty()) {
             cout << "Log file: " << config.logFile << "\n";
@@ -73,10 +89,10 @@ int main(int argc, char* argv[]) {
 
         cout << "Press Ctrl+C to stop.\n\n";
 
-        // 7. Start watching files
+        // 8. Start watching files asynchronously
         fileWatcher.start([&](const FileEvent& event) {
 
-            // Print event on console
+            // Print event on console (thread-safe)
             logger.log(event);
 
             // Write event to file if enabled
@@ -84,24 +100,35 @@ int main(int argc, char* argv[]) {
                 fileLogger->logEvent(event);
             }
 
-            // Process event using rules
-            auto results = engine.onEvent(event);
+            // Match rules without blocking the event listener thread
+            auto matchedRules = engine.match(event);
 
-            // Log rule results
-            if (fileLogger) {
-                for (const auto& [ruleName, success] : results) {
-                    fileLogger->logRuleResult(ruleName, success);
-                }
+            for (const auto* rule : matchedRules) {
+                Task task = createTask(*rule, event);
+                taskQueue->push(std::move(task));
             }
         });
 
-        // 8. Keep program running
+        // 9. Keep program running until signal
         while (keepRunning) {
             pause();
         }
 
-        // 9. Stop watcher
+        cout << "\nStopping WatchFlow gracefully...\n";
+
+        // 10. Stop inotify file watcher (stops receiving new events)
         fileWatcher.stop();
+
+        // 11. Gracefully drain task queue and join all worker threads
+        threadPool.shutdown(true);
+
+        // 12. Display execution summary
+        cout << "\nWatchFlow shutdown complete.\n";
+        cout << "Total Tasks Executed: " << taskExecutor->totalExecuted() << "\n";
+        cout << "  Successful: " << taskExecutor->totalSucceeded() << "\n";
+        cout << "  Failed:     " << taskExecutor->totalFailed() << "\n";
+        cout << "  Retried:    " << taskExecutor->totalRetried() << "\n";
+        cout << "Average Task Latency: " << taskExecutor->averageExecutionTimeMs() << " ms\n";
 
     }
     catch (const exception& ex) {

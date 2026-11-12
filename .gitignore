@@ -4,3 +4,4 @@ build/
 *.out
 sandbox/
 output/
+logs/downloads.log
