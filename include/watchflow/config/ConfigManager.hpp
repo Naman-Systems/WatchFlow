@@ -30,6 +30,8 @@ struct Config {
     std::filesystem::path logFile;
     ActionOptions actionOptions;
     std::vector<Rule> rules;
+    size_t workers = 0;
+    size_t queueCapacity = 1000;
 };
 
 class ConfigManager {

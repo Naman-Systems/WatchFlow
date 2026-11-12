@@ -2,9 +2,10 @@
 #include <cstdlib>
 
 using namespace std;
-using namespace watchflow;
 
+namespace watchflow {
 
+namespace {
 // Replace {file} with actual file path
 string replaceFile(string command, string file)
 {
@@ -17,14 +18,13 @@ string replaceFile(string command, string file)
 
     return command;
 }
-
+}
 
 // Constructor
 ExecuteAction::ExecuteAction(string command)
 {
     command_ = command;
 }
-
 
 // Execute command
 bool ExecuteAction::execute(const FileEvent& event)

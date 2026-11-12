@@ -17,6 +17,8 @@ void ConsoleLogger::log(const FileEvent& event) const
     // Convert time to time_t
     time_t currentTime = chrono::system_clock::to_time_t(now);
 
+    lock_guard<mutex> lock(consoleMutex_);
+
     // Print timestamp
     cout << "["
          << put_time(localtime(&currentTime), "%H:%M:%S")
@@ -27,6 +29,18 @@ void ConsoleLogger::log(const FileEvent& event) const
 
     // Print file path
     cout << event.path << "\n";
+}
+
+void ConsoleLogger::logMessage(const std::string& message) const
+{
+    auto now = chrono::system_clock::now();
+    time_t currentTime = chrono::system_clock::to_time_t(now);
+
+    lock_guard<mutex> lock(consoleMutex_);
+    cout << "["
+         << put_time(localtime(&currentTime), "%H:%M:%S")
+         << "] "
+         << message << "\n";
 }
 
 }

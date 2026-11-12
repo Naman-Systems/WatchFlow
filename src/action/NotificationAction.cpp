@@ -5,7 +5,7 @@ using namespace std;
 
 namespace watchflow {
 
-
+namespace {
 // Replace {file} with the actual filename
 string replaceFile(string message, string file)
 {
@@ -17,6 +17,7 @@ string replaceFile(string message, string file)
     }
 
     return message;
+}
 }
 
 
