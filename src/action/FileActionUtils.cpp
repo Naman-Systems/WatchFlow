@@ -5,8 +5,8 @@
 #include <chrono>
 
 using namespace std;
-using namespace watchflow;
 
+namespace watchflow {
 
 // Find a unique filename if the file already exists
 filesystem::path resolveDuplicatePath(
@@ -84,3 +84,5 @@ bool waitUntilFileStable(
     // Timeout
     return false;
 }
+
+} // namespace watchflow

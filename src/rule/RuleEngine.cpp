@@ -1,4 +1,5 @@
 #include "watchflow/rule/RuleEngine.hpp"
+#include <iostream>
 
 using namespace std;
 
